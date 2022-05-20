@@ -1,1 +1,4 @@
-# get.started.todo.app
+## Build
+```
+./mvnw clean install
+```
