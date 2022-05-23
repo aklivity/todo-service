@@ -68,7 +68,7 @@ public class AcceptCommandProcessorSupplier implements ProcessorSupplier<String,
             if (idempotencyKey == null)
             {
                 newResponseHeaders.add(":status", "400".getBytes());
-                final Record reply = newCommand.withHeaders(newResponseHeaders).withValue("Missing idempotency key");
+                final Record reply = newCommand.withHeaders(newResponseHeaders).withValue("Missing idempotency key header");
                 context.forward(reply, replyTo);
             }
             else if (command instanceof CreateTaskCommand)
