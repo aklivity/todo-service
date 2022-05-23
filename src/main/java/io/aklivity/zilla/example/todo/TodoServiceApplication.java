@@ -8,10 +8,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 @SuppressWarnings({"HideUtilityClassConstructor"})
-public class CqrsProcessingApplication
+public class TodoServiceApplication
 {
     public static void main(String[] args)
     {
-        SpringApplication.run(CqrsProcessingApplication.class, args);
+        SpringApplication.run(TodoServiceApplication.class, args);
     }
 }

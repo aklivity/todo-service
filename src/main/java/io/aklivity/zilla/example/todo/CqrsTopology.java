@@ -14,9 +14,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.aklivity.zilla.example.todo.model.Task;
-import io.aklivity.zilla.example.todo.processor.AcceptCommandProcessorSupplier;
-import io.aklivity.zilla.example.todo.processor.CommandProcessorSupplier;
-import io.aklivity.zilla.example.todo.processor.RejectCommandProcessorSupplier;
+import io.aklivity.zilla.example.todo.processor.ProcessValidCommandSupplier;
+import io.aklivity.zilla.example.todo.processor.RejectInvalidCommandSupplier;
+import io.aklivity.zilla.example.todo.processor.ValidateCommandSupplier;
 import io.aklivity.zilla.example.todo.serde.CommandJsonDeserializer;
 import io.aklivity.zilla.example.todo.serde.SerdeFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -46,12 +46,12 @@ public class CqrsTopology
     public void buildPipeline(StreamsBuilder streamsBuilder)
     {
         final String etagStoreName = "EtagStore";
-        final String command = "Command";
-        final String commandProcessor = "CommandProcessor";
-        final String replyTo = "ReplyTo";
-        final String rejectCommandProcessor = "RejectCommandProcessor";
-        final String acceptCommandProcessor = "AcceptCommandProcessor";
-        final String commandSnapshot = "CommandSnapshot";
+        final String taskCommandsSource = "TaskCommandsSource";
+        final String validateCommand = "ValidateCommand";
+        final String taskRepliesSink = "TaskRepliesSink";
+        final String rejectInvalidCommand = "RejectInvalidCommand";
+        final String processValidCommand = "ProcessValidCommand";
+        final String taskSnapshotsSink = "TaskSnapshotsSink";
 
         // create store
         final StoreBuilder commandStoreBuilder = Stores.keyValueStoreBuilder(
@@ -60,19 +60,19 @@ public class CqrsTopology
                 etagSerde);
 
         Topology topologyBuilder = streamsBuilder.build();
-        topologyBuilder.addSource(command, stringSerde.deserializer(), commandDeserializer, taskCommandsTopic)
-                .addProcessor(commandProcessor, new CommandProcessorSupplier(etagStoreName,
-                        acceptCommandProcessor, rejectCommandProcessor), command)
-                .addProcessor(acceptCommandProcessor,
-                        new AcceptCommandProcessorSupplier(etagStoreName, commandSnapshot, replyTo),
-                        commandProcessor)
-                .addProcessor(rejectCommandProcessor, new RejectCommandProcessorSupplier(replyTo),
-                        commandProcessor)
-                .addSink(replyTo, taskRepliesTopic, stringSerde.serializer(), responseSerde.serializer(),
-                        acceptCommandProcessor, rejectCommandProcessor)
-                .addSink(commandSnapshot, taskSnapshotsTopic, stringSerde.serializer(), taskSerde.serializer(),
-                        acceptCommandProcessor)
-                .addStateStore(commandStoreBuilder, commandProcessor, acceptCommandProcessor);
+        topologyBuilder.addSource(taskCommandsSource, stringSerde.deserializer(), commandDeserializer, taskCommandsTopic)
+                .addProcessor(validateCommand, new ValidateCommandSupplier(etagStoreName,
+                        processValidCommand, rejectInvalidCommand), taskCommandsSource)
+                .addProcessor(processValidCommand,
+                        new ProcessValidCommandSupplier(etagStoreName, taskSnapshotsSink, taskRepliesSink),
+                        validateCommand)
+                .addProcessor(rejectInvalidCommand, new RejectInvalidCommandSupplier(taskRepliesSink),
+                        validateCommand)
+                .addSink(taskRepliesSink, taskRepliesTopic, stringSerde.serializer(), responseSerde.serializer(),
+                        processValidCommand, rejectInvalidCommand)
+                .addSink(taskSnapshotsSink, taskSnapshotsTopic, stringSerde.serializer(), taskSerde.serializer(),
+                        processValidCommand)
+                .addStateStore(commandStoreBuilder, validateCommand, processValidCommand);
         System.out.println(topologyBuilder.describe());
     }
 }
