@@ -122,8 +122,8 @@
                 <configuration>
                     <images>
                         <image>
-                            <alias>cqrs-processor</alias>
-                            <name>cqrs-processor:%v</name>
+                            <alias>${project.artifactId}</alias>
+                            <name>${project.artifactId}:%v</name>
                             <build>
                                 <tags>
                                     <tag>latest</tag>
