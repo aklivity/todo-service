@@ -14,11 +14,11 @@ import org.apache.logging.log4j.util.Strings;
 
 import io.aklivity.zilla.example.todo.model.Command;
 
-public class RejectCommandProcessorSupplier implements ProcessorSupplier<String, Command, String, Object>
+public class RejectInvalidCommandSupplier implements ProcessorSupplier<String, Command, String, Object>
 {
     private final String replyTo;
 
-    public RejectCommandProcessorSupplier(String replyTo)
+    public RejectInvalidCommandSupplier(String replyTo)
     {
         this.replyTo = replyTo;
     }

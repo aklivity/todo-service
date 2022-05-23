@@ -16,13 +16,13 @@ import org.apache.kafka.streams.state.KeyValueStore;
 
 import io.aklivity.zilla.example.todo.model.Command;
 
-public class CommandProcessorSupplier implements ProcessorSupplier<String, Command, String, Command>
+public class ValidateCommandSupplier implements ProcessorSupplier<String, Command, String, Command>
 {
     private final String etagStoreName;
     private final String successName;
     private final String failureName;
 
-    public CommandProcessorSupplier(String etagStoreName, String successName, String failureName)
+    public ValidateCommandSupplier(String etagStoreName, String successName, String failureName)
     {
         this.etagStoreName = etagStoreName;
         this.successName = successName;
@@ -32,10 +32,10 @@ public class CommandProcessorSupplier implements ProcessorSupplier<String, Comma
     @Override
     public Processor<String, Command, String, Command> get()
     {
-        return new CommandProcessor();
+        return new ValidateCommand();
     }
 
-    class CommandProcessor implements Processor<String, Command, String, Command>
+    class ValidateCommand implements Processor<String, Command, String, Command>
     {
         private ProcessorContext context;
         private KeyValueStore<String, String> etagStore;

@@ -20,7 +20,7 @@ import io.aklivity.zilla.example.todo.model.DeleteTaskCommand;
 import io.aklivity.zilla.example.todo.model.RenameTaskCommand;
 import io.aklivity.zilla.example.todo.model.Task;
 
-public class AcceptCommandProcessorSupplier implements ProcessorSupplier<String, Command, String, Object>
+public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Command, String, Object>
 {
     private final String etagStoreName;
     private final String snapshot;
@@ -28,7 +28,7 @@ public class AcceptCommandProcessorSupplier implements ProcessorSupplier<String,
 
     private KeyValueStore<String, String> etagStore;
 
-    public AcceptCommandProcessorSupplier(String etagStoreName, String snapshot, String replyTo)
+    public ProcessValidCommandSupplier(String etagStoreName, String snapshot, String replyTo)
     {
         this.etagStoreName = etagStoreName;
         this.snapshot = snapshot;
@@ -38,10 +38,10 @@ public class AcceptCommandProcessorSupplier implements ProcessorSupplier<String,
     @Override
     public Processor<String, Command, String, Object> get()
     {
-        return new AcceptCommandProcessor();
+        return new ProcessValidCommand();
     }
 
-    class AcceptCommandProcessor implements Processor<String, Command, String, Object>
+    class ProcessValidCommand implements Processor<String, Command, String, Object>
     {
         ProcessorContext context;
 
