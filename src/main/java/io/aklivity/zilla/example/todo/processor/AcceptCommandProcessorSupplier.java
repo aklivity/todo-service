@@ -65,7 +65,13 @@ public class AcceptCommandProcessorSupplier implements ProcessorSupplier<String,
             final Headers newSnapshotHeaders = new RecordHeaders();
             final Header contentType = new RecordHeader("content-type", "application/json".getBytes());
 
-            if (command instanceof CreateTaskCommand)
+            if (idempotencyKey == null)
+            {
+                newResponseHeaders.add(":status", "400".getBytes());
+                final Record reply = newCommand.withHeaders(newResponseHeaders).withValue("Missing idempotency-key header");
+                context.forward(reply, replyTo);
+            }
+            else if (command instanceof CreateTaskCommand)
             {
                 String etagValue = "1";
                 newSnapshotHeaders.add("etag", etagValue.getBytes());
