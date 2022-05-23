@@ -60,7 +60,14 @@ public class CommandProcessorSupplier implements ProcessorSupplier<String, Comma
 
             final Headers newHeaders = new RecordHeaders();
             newHeaders.add(correlationId);
-            newHeaders.add(idempotencyKey);
+            if (idempotencyKey != null)
+            {
+                newHeaders.add(idempotencyKey);
+            }
+            else
+            {
+                newHeaders.add("no-idempotency-key", "".getBytes());
+            }
             newHeaders.add(path);
 
             final Record<String, Command> command = record.withHeaders(newHeaders);

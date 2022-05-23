@@ -30,10 +30,9 @@ public class CommandJsonDeserializer implements Deserializer<Command>
     {
         final Header domainModelHeader = headers.lastHeader("zilla:domain-model");
         final Header correlationId = headers.lastHeader("zilla:correlation-id");
-        final Header idempotencyKey = headers.lastHeader("idempotency-key");
         final String domainModel = new String(domainModelHeader.value());
 
-        if (correlationId != null && idempotencyKey != null)
+        if (correlationId != null)
         {
             JavaType type = null;
             switch (domainModel)
