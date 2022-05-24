@@ -175,7 +175,7 @@
                     <dependency>
                         <groupId>io.aklivity.zilla</groupId>
                         <artifactId>conf</artifactId>
-                        <version>develop-SNAPSHOT</version>
+                        <version>0.9.19</version>
                     </dependency>
                 </dependencies>
             </plugin>
