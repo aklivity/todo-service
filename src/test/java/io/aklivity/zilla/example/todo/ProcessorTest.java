@@ -214,4 +214,25 @@ public class ProcessorTest
         assertArrayEquals("412".getBytes(), responses.get(1).headers().lastHeader(":status").value());
     }
 
+    @Test
+    public void shouldIgnoreDuplicateCreateCommand()
+    {
+        final Headers createHeaders = new RecordHeaders(
+                new Header[]{
+                    new RecordHeader("zilla:domain-model", "CreateTaskCommand".getBytes()),
+                    new RecordHeader("zilla:correlation-id", "1".getBytes()),
+                    new RecordHeader("idempotency-key", "task1".getBytes()),
+                    new RecordHeader(":path", "/task".getBytes())
+                });
+        commandsInTopic.pipeInput(new TestRecord<>("task1", CreateTaskCommand.builder()
+                .name("Test")
+                .build(), createHeaders));
+        commandsInTopic.pipeInput(new TestRecord<>("task1", CreateTaskCommand.builder()
+                .name("Test")
+                .build(), createHeaders));
+        List<KeyValue<String, Object>> response = commandsResponseTopic.readKeyValuesToList();
+        assertEquals(1, response.size());
+        List<KeyValue<String, Task>> snapshots = snapshotsOutTopic.readKeyValuesToList();
+        assertEquals(1, snapshots.size());
+    }
 }
