@@ -63,9 +63,7 @@ public class ValidateCommandSupplier implements ProcessorSupplier<String, Comman
             final String etag = taskSnapshotState == null ? null : taskSnapshotState.getEtag();
             final byte[] idempotencyKey = taskSnapshotState == null ? null : taskSnapshotState.getIdempotencyKey();
 
-            if (idempotencyKeyHeader == null ||
-                    !(command instanceof CreateTaskCommand) ||
-                    !Arrays.equals(idempotencyKeyHeader.value(), idempotencyKey))
+            if (checkIdempotencyKey(command, idempotencyKeyHeader, idempotencyKey))
             {
                 final Headers newHeaders = new RecordHeaders();
                 newHeaders.add(correlationId);
@@ -80,6 +78,12 @@ public class ValidateCommandSupplier implements ProcessorSupplier<String, Comman
                         ? successName : failureName;
                 context.forward(newRecord, childName);
             }
+        }
+
+        private boolean checkIdempotencyKey(Command command, Header idempotencyKeyHeader, byte[] idempotencyKey) {
+            return idempotencyKeyHeader == null ||
+                    !(command instanceof CreateTaskCommand) ||
+                    !Arrays.equals(idempotencyKeyHeader.value(), idempotencyKey);
         }
     }
 }
