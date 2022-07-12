@@ -34,10 +34,10 @@ public class KafkaConfig
     @Value("${spring.kafka.application-id}")
     private String applicationId;
 
-    @Value("${spring.kafka.sasl.jaas.config:null}")
+    @Value("${spring.kafka.sasl.jaas.config:#{null}}")
     private String saslJaasConfig;
 
-    @Value("${spring.kafka.sasl.mechanism:null}")
+    @Value("${spring.kafka.sasl.mechanism:#{null}}")
     private String saslMechanism;
 
     @Value("${spring.kafka.streams.state.dir:#{null}}")
