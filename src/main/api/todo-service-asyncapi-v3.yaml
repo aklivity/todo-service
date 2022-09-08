@@ -1,50 +1,55 @@
-asyncapi: 2.4.0
-id: urn:io.aklivity.zilla.example.todo
+asyncapi: 3.0.0 # not yet released
+id: urn:io.aklivity.zilla.example.todo.service
 info:
   title: Todo Service
   description: Manage a list of todo tasks
   version: 0.1.0
-channels:
-  task-commands/create:
-    publish:
-      operationId: createTask
-      summary: Request service to create a new task in the system
-      tags:
-        - name: Tasks API
-      message:
-        $ref : '#/components/messages/CreateTaskCommand'
-      x-reply-to: task-replies
-  task-commands/rename:
-    publish:
-      operationId: renameTask
-      summary: Request service to rename an existing task in the system
-      tags:
-        - name: Tasks API
-      message:
-        $ref : '#/components/messages/RenameTaskCommand'
-      x-reply-to: task-replies
-  task-commands/delete:
-    publish:
-      operationId: deleteTask
-      summary: Request service to delete an existing task from the system
-      tags:
-        - name: Tasks API
-      message:
-        $ref : '#/components/messages/DeleteTaskCommand'
-      x-reply-to: task-replies
-  task-replies:
-    subscribe:
-      operationId: taskReplies
+operations:
+  createTask:
+    channel: task-commands
+    action: receive
+    title: Create a new task
+    summary: Request service to create a new task in the system
+    tags:
+      - name: Tasks API
+    message:
+      $ref : '#/components/messages/CreateTaskCommand'
+    reply:
       message:
         $ref : '#/components/messages/TaskReply'
-  task-snapshots:
-    subscribe:
-      operationId: taskSnapshots
-      summary: Notify observers when a task is updated
-      tags:
-        - name: Tasks API
+  renameTask:
+    channel: task-commands
+    action: receive
+    title: Rename an existing task
+    summary: Request service to rename an existing task in the system
+    tags:
+      - name: Tasks API
+    message:
+      $ref : '#/components/messages/RenameTaskCommand'
+    reply:
       message:
-        $ref : '#/components/messages/TaskSnapshot'
+        $ref : '#/components/messages/TaskReply'
+  deleteTask:
+    channel: task-commands
+    action: receive
+    title: Delete task
+    summary: Request service to delete an existing task from the system
+    tags:
+      - name: Tasks API
+    message:
+      $ref : '#/components/messages/DeleteTaskCommand'
+    reply:
+      message:
+        $ref : '#/components/messages/TaskReply'
+  taskUpdated:
+    channel: task-snapshots
+    action: send
+    title: Task updated
+    summary: Notify observers when a task is updated
+    tags:
+      - name: Tasks API
+    message:
+      $ref : '#/components/messages/TaskSnapshot'
 components:
   messages:
     CreateTaskCommand:
@@ -75,6 +80,7 @@ components:
         $ref : '#/components/schemas/task'
     DeleteTaskCommand:
       name: deleteTask
+      contentType: application/json
       headers:
         allOf:
           - $ref : '#/components/schemas/command'
@@ -89,6 +95,7 @@ components:
         $ref : '#/components/schemas/reply'
     TaskSnapshot:
       name: taskSnapshot
+      contentType: application/json
       payload:
         $ref : '#/components/schemas/task'
       bindings:

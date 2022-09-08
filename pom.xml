@@ -192,6 +192,7 @@
                         <include>src/**</include>
                     </includes>
                     <excludes>
+                        <exclude>src/main/api/**</exclude>
                         <exclude>src/conf/**</exclude>
                         <exclude>src/**/*.btm</exclude>
                     </excludes>
