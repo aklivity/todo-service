@@ -80,7 +80,8 @@ public class ValidateCommandSupplier implements ProcessorSupplier<String, Comman
             }
         }
 
-        private boolean checkIdempotencyKey(Command command, Header idempotencyKeyHeader, byte[] idempotencyKey) {
+        private boolean checkIdempotencyKey(Command command, Header idempotencyKeyHeader, byte[] idempotencyKey)
+        {
             return idempotencyKeyHeader == null ||
                     !(command instanceof CreateTaskCommand) ||
                     !Arrays.equals(idempotencyKeyHeader.value(), idempotencyKey);
