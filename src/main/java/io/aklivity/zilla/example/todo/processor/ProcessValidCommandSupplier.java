@@ -19,18 +19,19 @@ import io.aklivity.zilla.example.todo.model.CreateTaskCommand;
 import io.aklivity.zilla.example.todo.model.DeleteTaskCommand;
 import io.aklivity.zilla.example.todo.model.RenameTaskCommand;
 import io.aklivity.zilla.example.todo.model.Task;
+import io.aklivity.zilla.example.todo.model.TaskSnapshotState;
 
 public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Command, String, Object>
 {
-    private final String etagStoreName;
+    private final String taskSnapshotStateStoreName;
     private final String snapshot;
     private final String replyTo;
 
-    private KeyValueStore<String, String> etagStore;
+    private KeyValueStore<String, TaskSnapshotState> taskSnapshotStore;
 
-    public ProcessValidCommandSupplier(String etagStoreName, String snapshot, String replyTo)
+    public ProcessValidCommandSupplier(String taskSnapshotStateStoreName, String snapshot, String replyTo)
     {
-        this.etagStoreName = etagStoreName;
+        this.taskSnapshotStateStoreName = taskSnapshotStateStoreName;
         this.snapshot = snapshot;
         this.replyTo = replyTo;
     }
@@ -49,7 +50,7 @@ public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Co
         public void init(final ProcessorContext context)
         {
             this.context = context;
-            etagStore = (KeyValueStore) context.getStateStore(etagStoreName);
+            taskSnapshotStore = (KeyValueStore) context.getStateStore(taskSnapshotStateStoreName);
         }
 
         @Override
@@ -58,14 +59,14 @@ public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Co
             final String key = newCommand.key();
             final Command command = newCommand.value();
             final Headers headers = newCommand.headers();
-            final Header idempotencyKey = headers.lastHeader("idempotency-key");
+            final Header idempotencyKeyHeader = headers.lastHeader("idempotency-key");
             final Header correlationId = headers.lastHeader("zilla:correlation-id");
             final Headers newResponseHeaders = new RecordHeaders();
             newResponseHeaders.add(correlationId);
             final Headers newSnapshotHeaders = new RecordHeaders();
             final Header contentType = new RecordHeader("content-type", "application/json".getBytes());
 
-            if (idempotencyKey == null)
+            if (idempotencyKeyHeader == null)
             {
                 newResponseHeaders.add(":status", "400".getBytes());
                 final Record reply = newCommand.withHeaders(newResponseHeaders).withValue("Missing idempotency-key header");
@@ -82,19 +83,22 @@ public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Co
                                 .name(((CreateTaskCommand) command).getName())
                                 .build());
                 context.forward(newSnapshot, snapshot);
-                etagStore.putIfAbsent(key, etagValue);
+                taskSnapshotStore.putIfAbsent(key, TaskSnapshotState.builder()
+                        .etag(etagValue).idempotencyKey(idempotencyKeyHeader.value()).build());
 
                 final Header path = headers.lastHeader(":path");
                 newResponseHeaders.add(":status", "201".getBytes());
                 newResponseHeaders.add("location", String.format("%s/%s", new String(path.value()),
-                        new String(idempotencyKey.value())).getBytes());
+                        new String(idempotencyKeyHeader.value())).getBytes());
                 final Record reply = newCommand.withHeaders(newResponseHeaders).withValue(Strings.EMPTY);
                 context.forward(reply, replyTo);
             }
             else if (command instanceof RenameTaskCommand)
             {
-                final String currentEtag = etagStore.get(key);
+                final TaskSnapshotState taskSnapshotState = taskSnapshotStore.get(key);
+                final String currentEtag = taskSnapshotState.getEtag();
                 final String newEtag = Integer.toString(Integer.parseInt(currentEtag) + 1);
+                taskSnapshotState.setEtag(newEtag);
                 newSnapshotHeaders.add("etag", newEtag.getBytes());
                 newSnapshotHeaders.add(contentType);
                 final Record newSnapshot = newCommand
@@ -103,7 +107,7 @@ public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Co
                                 .name(((RenameTaskCommand) command).getName())
                                 .build());
                 context.forward(newSnapshot, snapshot);
-                etagStore.put(key, newEtag);
+                taskSnapshotStore.put(key, taskSnapshotState);
 
                 newResponseHeaders.add(":status", "204".getBytes());
                 final Record reply = newCommand.withHeaders(newResponseHeaders).withValue(Strings.EMPTY);
@@ -113,7 +117,7 @@ public class ProcessValidCommandSupplier implements ProcessorSupplier<String, Co
             {
                 final Record newSnapshot = newCommand.withHeaders(newResponseHeaders).withValue(null);
                 context.forward(newSnapshot, snapshot);
-                etagStore.delete(key);
+                taskSnapshotStore.delete(key);
 
                 newResponseHeaders.add(":status", "204".getBytes());
                 final Record reply = newCommand.withHeaders(newResponseHeaders).withValue(Strings.EMPTY);

@@ -72,6 +72,6 @@ public class KafkaConfig
     public StreamsBuilderFactoryBeanCustomizer streamsBuilderFactoryBeanCustomizer()
     {
         return sfb -> sfb.setStreamsUncaughtExceptionHandler(exception
-                -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
+            -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
     }
 }

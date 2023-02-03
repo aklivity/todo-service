@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.aklivity.zilla.example.todo.model.Task;
+import io.aklivity.zilla.example.todo.model.TaskSnapshotState;
 import io.aklivity.zilla.example.todo.processor.ProcessValidCommandSupplier;
 import io.aklivity.zilla.example.todo.processor.RejectInvalidCommandSupplier;
 import io.aklivity.zilla.example.todo.processor.ValidateCommandSupplier;
@@ -28,7 +29,8 @@ public class CqrsTopology
     private final Serde<String> stringSerde = Serdes.String();
 
     private CommandJsonDeserializer commandDeserializer = new CommandJsonDeserializer();
-    private final Serde<String> etagSerde = Serdes.String();
+    private final Serde<TaskSnapshotState> taskSnapshotStateSerde =
+            SerdeFactory.jsonSerdeFor(TaskSnapshotState.class, false);
     private final Serde<Task> taskSerde = SerdeFactory.jsonSerdeFor(Task.class, false);
     private final Serde<String> responseSerde = Serdes.String();
 
@@ -45,7 +47,7 @@ public class CqrsTopology
     @Autowired
     public void buildPipeline(StreamsBuilder streamsBuilder)
     {
-        final String etagStoreName = "EtagStore";
+        final String taskSnapshotStateStore = "TaskSnapshotStateStore";
         final String taskCommandsSource = "TaskCommandsSource";
         final String validateCommand = "ValidateCommand";
         final String taskRepliesSink = "TaskRepliesSink";
@@ -55,16 +57,16 @@ public class CqrsTopology
 
         // create store
         final StoreBuilder commandStoreBuilder = Stores.keyValueStoreBuilder(
-                Stores.persistentKeyValueStore(etagStoreName),
+                Stores.persistentKeyValueStore(taskSnapshotStateStore),
                 Serdes.String(),
-                etagSerde);
+                taskSnapshotStateSerde);
 
         Topology topologyBuilder = streamsBuilder.build();
         topologyBuilder.addSource(taskCommandsSource, stringSerde.deserializer(), commandDeserializer, taskCommandsTopic)
-                .addProcessor(validateCommand, new ValidateCommandSupplier(etagStoreName,
+                .addProcessor(validateCommand, new ValidateCommandSupplier(taskSnapshotStateStore,
                         processValidCommand, rejectInvalidCommand), taskCommandsSource)
                 .addProcessor(processValidCommand,
-                        new ProcessValidCommandSupplier(etagStoreName, taskSnapshotsSink, taskRepliesSink),
+                        new ProcessValidCommandSupplier(taskSnapshotStateStore, taskSnapshotsSink, taskRepliesSink),
                         validateCommand)
                 .addProcessor(rejectInvalidCommand, new RejectInvalidCommandSupplier(taskRepliesSink),
                         validateCommand)

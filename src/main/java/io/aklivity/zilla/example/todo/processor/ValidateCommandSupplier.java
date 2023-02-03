@@ -15,16 +15,18 @@ import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 import io.aklivity.zilla.example.todo.model.Command;
+import io.aklivity.zilla.example.todo.model.CreateTaskCommand;
+import io.aklivity.zilla.example.todo.model.TaskSnapshotState;
 
 public class ValidateCommandSupplier implements ProcessorSupplier<String, Command, String, Command>
 {
-    private final String etagStoreName;
+    private final String taskSnapshotStateStoreName;
     private final String successName;
     private final String failureName;
 
-    public ValidateCommandSupplier(String etagStoreName, String successName, String failureName)
+    public ValidateCommandSupplier(String taskSnapshotStateStoreName, String successName, String failureName)
     {
-        this.etagStoreName = etagStoreName;
+        this.taskSnapshotStateStoreName = taskSnapshotStateStoreName;
         this.successName = successName;
         this.failureName = failureName;
     }
@@ -38,38 +40,51 @@ public class ValidateCommandSupplier implements ProcessorSupplier<String, Comman
     class ValidateCommand implements Processor<String, Command, String, Command>
     {
         private ProcessorContext context;
-        private KeyValueStore<String, String> etagStore;
+        private KeyValueStore<String, TaskSnapshotState> taskSnapshotStore;
 
         @Override
         public void init(final ProcessorContext context)
         {
             this.context = context;
-            this.etagStore = (KeyValueStore) context.getStateStore(etagStoreName);
+            this.taskSnapshotStore = (KeyValueStore) context.getStateStore(taskSnapshotStateStoreName);
         }
 
         @Override
         public void process(Record<String, Command> record)
         {
             final String key = record.key();
+            final Command command = record.value();
             final Headers headers = record.headers();
             final Header correlationId = headers.lastHeader("zilla:correlation-id");
-            final Header idempotencyKey = headers.lastHeader("idempotency-key");
+            final Header idempotencyKeyHeader = headers.lastHeader("idempotency-key");
             final Header path = headers.lastHeader(":path");
             final Header ifMatch = headers.lastHeader("if-match");
-            final String etag = etagStore.get(key);
+            final TaskSnapshotState taskSnapshotState = taskSnapshotStore.get(key);
+            final String etag = taskSnapshotState == null ? null : taskSnapshotState.getEtag();
+            final byte[] idempotencyKey = taskSnapshotState == null ? null : taskSnapshotState.getIdempotencyKey();
 
-            final Headers newHeaders = new RecordHeaders();
-            newHeaders.add(correlationId);
-            if (idempotencyKey != null)
+            if (checkIdempotencyKey(command, idempotencyKeyHeader, idempotencyKey))
             {
-                newHeaders.add(idempotencyKey);
-            }
-            newHeaders.add(path);
+                final Headers newHeaders = new RecordHeaders();
+                newHeaders.add(correlationId);
+                if (idempotencyKeyHeader != null)
+                {
+                    newHeaders.add(idempotencyKeyHeader);
+                }
+                newHeaders.add(path);
 
-            final Record<String, Command> command = record.withHeaders(newHeaders);
-            final String childName = ifMatch == null || etag != null && Arrays.equals(ifMatch.value(), etag.getBytes())
-                    ? successName : failureName;
-            context.forward(command, childName);
+                final Record<String, Command> newRecord = record.withHeaders(newHeaders);
+                final String childName = ifMatch == null || etag != null && Arrays.equals(ifMatch.value(), etag.getBytes())
+                        ? successName : failureName;
+                context.forward(newRecord, childName);
+            }
+        }
+
+        private boolean checkIdempotencyKey(Command command, Header idempotencyKeyHeader, byte[] idempotencyKey)
+        {
+            return idempotencyKeyHeader == null ||
+                    !(command instanceof CreateTaskCommand) ||
+                    !Arrays.equals(idempotencyKeyHeader.value(), idempotencyKey);
         }
     }
 }
