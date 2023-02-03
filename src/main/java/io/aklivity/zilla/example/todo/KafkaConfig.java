@@ -34,10 +34,10 @@ public class KafkaConfig
     @Value("${spring.kafka.application-id}")
     private String applicationId;
 
-    @Value("${spring.kafka.sasl.jaas.config:null}")
+    @Value("${spring.kafka.sasl.jaas.config:#{null}}")
     private String saslJaasConfig;
 
-    @Value("${spring.kafka.sasl.mechanism:null}")
+    @Value("${spring.kafka.sasl.mechanism:#{null}}")
     private String saslMechanism;
 
     @Value("${spring.kafka.streams.state.dir:#{null}}")
@@ -51,8 +51,11 @@ public class KafkaConfig
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(StreamsConfig.SECURITY_PROTOCOL_CONFIG, securityProtocol);
-        props.put("sasl.mechanism", saslMechanism);
-        props.put("sasl.jaas.config", saslJaasConfig);
+        if (saslJaasConfig != null)
+        {
+            props.put("sasl.mechanism", saslMechanism);
+            props.put("sasl.jaas.config", saslJaasConfig);
+        }
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serde.class.getName());
         props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
@@ -69,6 +72,6 @@ public class KafkaConfig
     public StreamsBuilderFactoryBeanCustomizer streamsBuilderFactoryBeanCustomizer()
     {
         return sfb -> sfb.setStreamsUncaughtExceptionHandler(exception
-                -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
+            -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
     }
 }
